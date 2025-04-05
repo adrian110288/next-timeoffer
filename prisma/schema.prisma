@@ -1,0 +1,96 @@
+// prisma/schema.prisma
+datasource db {
+  provider  = "postgresql"
+  url  	    = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+model CompanyHoliday {
+    id String @id @default(uuid())
+    name String 
+    date DateTime
+    isRecurring Boolean @default(false)
+    companyId String
+    company Company @relation(fields: [companyId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Company { 
+    id String @id @default(uuid())
+    name String 
+    logo String?
+    website String?
+    workingDays String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    holidays CompanyHoliday[]
+    users User[]
+    codes Code[]
+}
+
+model Code {
+    id String @id @default(uuid())
+    code String
+    companyId String
+    company Company @relation(fields: [companyId], references: [id])
+    used Boolean @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model User {
+    id String @id @default(uuid())
+    clerkId String @unique
+    email String @unique
+    firstName String 
+    lastName String
+    role UserRole @default(EMPLOYEE)
+    department String?
+    availableDays Int @default(25)
+    companyId String 
+    company Company @relation(fields: [companyId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    timeOffRequests TimeOffRequest[] @relation("EmployeeRequests")
+    approvedRequests TimeOffRequest[] @relation("ManagerApprovals")
+}
+
+enum UserRole {
+    ADMIN
+    EMPLOYEE
+    MANAGER
+}
+
+model TimeOffRequest {
+    id String @id @default(uuid())
+    employeeId String 
+    employee User @relation("EmployeeRequests", fields: [employeeId], references: [id])
+    startDate DateTime
+    endDate DateTime 
+    type TimeOffType
+    reason String?
+    status RequestStatus @default(PENDING)
+    managerId String?
+    manager User? @relation("ManagerApprovals", fields: [managerId], references: [id])
+    notes String?
+    workingDaysCount Int
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+enum TimeOffType {
+    VACATION
+    SICK
+    PERSONAL
+    OTHER
+}
+
+enum RequestStatus {
+    PENDING
+    APPROVED
+    REJECTED
+}

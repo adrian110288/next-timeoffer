@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Paperclip } from "lucide-react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 // import { SignInButton } from "@clerk/nextjs";
 // import { UserButton } from "@clerk/nextjs";
 // import { SignedIn } from "@clerk/nextjs";
@@ -46,12 +47,12 @@ export default async function Home() {
                     </Link>
                 </nav>
                 <div className="flex gap-4">
-                    {/* <SignedOut>
+                    <SignedOut>
                         <SignInButton />
                     </SignedOut>
                     <SignedIn>
                         <UserButton />
-                    </SignedIn> */}
+                    </SignedIn>
                 </div>
             </header>
             <main className="flex-1">
