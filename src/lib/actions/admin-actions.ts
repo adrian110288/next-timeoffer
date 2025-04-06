@@ -388,3 +388,88 @@ export async function generateInvitationCode() {
         throw new Error("Failed to generate invitation code");
     }
 }
+
+export async function updateTimeOffRequestStatus({
+    requestId,
+    status,
+    notes,
+}: {
+    requestId: string;
+    status: "APPROVED" | "REJECTED";
+    notes?: string;
+}) {
+    try {
+        const { userId } = await auth();
+        if (!userId) {
+            throw new Error("Unauthorised");
+        }
+
+        const user = await prisma.user.findUnique({
+            where: {
+                clerkId: userId,
+            },
+            select: {
+                id: true,
+                companyId: true,
+                role: true,
+            },
+        });
+
+        if (!user) {
+            throw new Error("User not found in database");
+        }
+
+        if (user.role !== "ADMIN") {
+            throw new Error("Unauthorized");
+        }
+
+        const request = await prisma.timeOffRequest.findUnique({
+            where: {
+                id: requestId,
+            },
+            include: {
+                employee: true,
+            },
+        });
+
+        if (!request) {
+            throw new Error("Time off request not found in database");
+        }
+
+        if (request.employee.companyId !== user.companyId) {
+            throw new Error(
+                "You can only update time off requests for your own company"
+            );
+        }
+
+        const updatedRequest = await prisma.timeOffRequest.update({
+            where: {
+                id: requestId,
+            },
+            data: {
+                status,
+                notes,
+                managerId: user.id,
+            },
+        });
+
+        if (status === "APPROVED") {
+            await prisma.user.update({
+                where: {
+                    id: request.employeeId,
+                },
+                data: {
+                    availableDays: {
+                        decrement: updatedRequest.workingDaysCount,
+                    },
+                },
+            });
+        }
+        revalidatePath("/admin/time-off-requests");
+
+        return updatedRequest;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to update time off request status");
+    }
+}
