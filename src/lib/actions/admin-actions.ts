@@ -329,3 +329,62 @@ export async function updateEmployeeAllowance({
         throw new Error("Failed to update employee allowance");
     }
 }
+
+export async function generateInvitationCode() {
+    try {
+        const { userId } = await auth();
+        if (!userId) {
+            throw new Error("Unauthorise");
+        }
+
+        const user = await prisma.user.findUnique({
+            where: {
+                clerkId: userId,
+            },
+            select: {
+                role: true,
+                companyId: true,
+            },
+        });
+
+        if (!user || user.role !== "ADMIN") {
+            throw new Error("Unauthorized");
+        }
+
+        const generateRandomCode = () => {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        };
+
+        let code = generateRandomCode();
+
+        let existingCode = await prisma.code.findFirst({
+            where: {
+                code,
+            },
+        });
+
+        while (existingCode) {
+            code = generateRandomCode();
+            existingCode = await prisma.code.findFirst({
+                where: {
+                    code,
+                },
+            });
+        }
+
+        const newCode = await prisma.code.create({
+            data: {
+                code,
+                companyId: user.companyId,
+                used: false,
+            },
+        });
+
+        revalidatePath("/admin/invitation-codes");
+
+        return newCode;
+    } catch (error) {
+        console.error(error);
+        throw new Error("Failed to generate invitation code");
+    }
+}
